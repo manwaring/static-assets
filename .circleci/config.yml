@@ -57,4 +57,4 @@ workflows:
           stage: automation
       - copy-assets:
           requires: [deploy-infrastructure]
-          contet: aws-manwaring
+          context: aws-manwaring
