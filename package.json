@@ -1,8 +1,6 @@
 {
   "name": "static-assets",
-  "version": "1.0.0",
-  "description": "Serverless webpack example using Typescript",
-  "main": "handler.js",
+  "version": "0.0.1",
   "scripts": {
     "deploy": "sls deploy",
     "test": "echo \"Error: no test specified\""
@@ -37,6 +35,5 @@
     "webpack": "^4.43.0",
     "webpack-node-externals": "^1.7.2"
   },
-  "author": "The serverless webpack authors (https://github.com/elastic-coders/serverless-webpack)",
-  "license": "MIT"
+  "author": "The serverless webpack authors (https://github.com/elastic-coders/serverless-webpack)"
 }

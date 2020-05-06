@@ -16,12 +16,21 @@ jobs:
     executor:
       name: node/default
       tag: "12.16.2"
+    parameters:
+      stage:
+        description: Stage to provision infrastructure for
+        type: string
+        default: ""
     steps:
       - checkout
       - node/install-packages
       - run:
           name: Deploy infrastructure
-          command: npm run deploy
+          command: |
+            STAGE=<< parameters.stage >>
+            [[ ! -z "$STAGE" ]] || STAGE=${CIRCLE_BRANCH%%/*}
+            echo Creating infrastructure for stage $STAGE
+            npm run deploy -- --stage $STAGE
 
 workflows:
   test-and-deploy:
@@ -31,3 +40,4 @@ workflows:
       - deploy:
           requires: [node/test]
           context: aws-manwaring
+          stage: automation
