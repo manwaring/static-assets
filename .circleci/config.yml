@@ -3,14 +3,14 @@ orbs:
   node: circleci/node@2.1.0
 
 jobs:
-  test:
-    executor:
-      name: node/default
-      tag: "12.16.2"
-    steps:
-      - checkout
-      - node/install-packages
-      - node/test
+  # test:
+  #   executor:
+  #     name: node/default
+  #     tag: "12.16.2"
+  #   steps:
+  #     - checkout
+  #     - node/install-packages
+  #     - node/test
 
   deploy:
     executor:
@@ -26,7 +26,8 @@ jobs:
 workflows:
   test-and-deploy:
     jobs:
-      - test
+      - node/test:
+          version: "12.16.2"
       - deploy:
-          requires: [test]
+          requires: [node/test]
           context: aws-manwaring
