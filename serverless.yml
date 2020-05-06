@@ -43,7 +43,9 @@ custom:
   prune:
     automatic: true
     number: 2
-  # https://github.com/thundra-io/serverless-plugin-thundra
+  # https://github.com/manwaring/serverless-plugin-test-helper
+  testHelper:
+    path: .serverless/stack-output/outputs.json
   # https://github.com/drexler/serverless-cloudformation-resource-counter
   warningThreshold: 100
   # https://github.com/serverless-heaven/serverless-webpack
@@ -79,6 +81,10 @@ resources:
         - ""
         - - "https://"
           - !GetAtt CDN.DomainName
+
+    StaticAssetBucket:
+      Description: URL for static assets
+      Value: !Ref StaticAssetBucket
 
   Resources:
     StaticAssetBucket:

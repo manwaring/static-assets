@@ -1,18 +1,11 @@
 version: 2.1
 orbs:
   node: circleci/node@2.1.0
+  aws-cli: circleci/aws-cli@1.0.0
+  jq: circleci/jq@2.0.1
 
 jobs:
-  # test:
-  #   executor:
-  #     name: node/default
-  #     tag: "12.16.2"
-  #   steps:
-  #     - checkout
-  #     - node/install-packages
-  #     - node/test
-
-  deploy:
+  deploy-infrastructure:
     executor:
       name: node/default
       tag: "12.16.2"
@@ -31,13 +24,37 @@ jobs:
             [[ ! -z "$STAGE" ]] || STAGE=${CIRCLE_BRANCH%%/*}
             echo Creating infrastructure for stage $STAGE
             npm run deploy -- --stage $STAGE
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .serverless
+
+  copy-assets:
+    executor:
+      name: aws-cli/default
+    steps:
+      - checkout
+      - jq/install
+      - aws-cli/setup
+      - attach_workspace:
+          at: .
+      - run:
+          command: |
+            STRING_BUCKET=$(jq .StaticAssetBucket < .serverless/stack-outputs/outputs.json)
+            echo $STRING_BUCKET
+            BUCKET=$(sed -e 's/^"//' -e 's/"$//' \<<< $STRING_BUCKET)
+            echo $BUCKET
+            aws s3 sync assets s3://$BUCKET/ --delete
 
 workflows:
   test-and-deploy:
     jobs:
       - node/test:
           version: "12.16.2"
-      - deploy:
+      - deploy-infrastructure:
           requires: [node/test]
           context: aws-manwaring
           stage: automation
+      - copy-assets:
+          requires: [deploy-infrastructure]
+          contet: aws-manwaring
