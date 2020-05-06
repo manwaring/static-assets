@@ -3,7 +3,8 @@
   "version": "0.0.1",
   "scripts": {
     "deploy": "sls deploy",
-    "test": "echo \"Error: no test specified\""
+    "test": "echo \"Error: no test specified\"",
+    "test-circle": "circleci config validate"
   },
   "dependencies": {
     "@manwaring/lambda-wrapper": "^3.2.0",
@@ -34,6 +35,11 @@
     "typescript": "^3.8.3",
     "webpack": "^4.43.0",
     "webpack-node-externals": "^1.7.2"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm test && npm run test-circle"
+    }
   },
   "author": "The serverless webpack authors (https://github.com/elastic-coders/serverless-webpack)"
 }
