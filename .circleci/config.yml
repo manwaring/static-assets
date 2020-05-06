@@ -1,0 +1,32 @@
+version: 2.1
+orbs:
+  node: circleci/node@2.1.0
+
+jobs:
+  test:
+    executor:
+      name: node/default
+      tag: "12.16.2"
+    steps:
+      - checkout
+      - node/install-packages
+      - node/test
+
+  deploy:
+    executor:
+      name: node/default
+      tag: "12.16.2"
+    steps:
+      - checkout
+      - node/install-packages
+      - run:
+          name: Deploy infrastructure
+          command: npm run deploy
+
+workflows:
+  test-and-deploy:
+    jobs:
+      - test
+      - deploy:
+          requires: [test]
+          context: aws-manwaring

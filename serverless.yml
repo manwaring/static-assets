@@ -1,0 +1,152 @@
+service:
+  name: static-assets
+
+plugins:
+  - serverless-webpack
+  - serverless-cloudformation-resource-counter
+  - serverless-plugin-iam-checker
+  - serverless-plugin-test-helper
+  - serverless-prune-versions
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: ${opt:stage, env:STAGE, env:USER, 'local'}
+  environment:
+    AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
+    LAMBDA_WRAPPER_LOG: true
+  iamRoleStatements:
+    - Effect: Allow
+      Action: cloudfront:CreateInvalidation
+      Resource: "*"
+    - Effect: Allow
+      Action: sns:Publish
+      Resource: !Join
+        - ":"
+        - - arn:aws:sns
+          - !Ref AWS::Region
+          - !Ref AWS::AccountId
+          - ${self:custom.assetUpdatedTopic}
+
+custom:
+  assetUpdatedTopic: static-assets-updated-${self:provider.stage}
+  staticAssetBucket:
+    arn: arn:aws:s3:::${self:custom.staticAssetBucket.name}
+    files: ${self:custom.staticAssetBucket.arn}/*
+    name: ${self:service.name}-${self:provider.stage}
+  # Serverless plugin configurations
+  # https://github.com/manwaring/serverless-plugin-iam-checker
+  iamChecker:
+    resources:
+      allowWildcardOnly: true
+  # https://github.com/manwaring/serverless-prune-versions
+  prune:
+    automatic: true
+    number: 2
+  # https://github.com/thundra-io/serverless-plugin-thundra
+  # https://github.com/drexler/serverless-cloudformation-resource-counter
+  warningThreshold: 100
+  # https://github.com/serverless-heaven/serverless-webpack
+  webpack:
+    webpackConfig: ./webpack.config.js
+    includeModules: true
+
+functions:
+  invalidate-cache:
+    handler: src/invalidate-cache.handler
+    events:
+      - sns: ${self:custom.assetUpdatedTopic}
+    environment:
+      CDN: !Ref CDN
+
+  bucket-event:
+    handler: src/bucket-event.handler
+    environment:
+      SITE_UPDATED_TOPIC: !Join
+        - ":"
+        - - arn:aws:sns
+          - !Ref AWS::Region
+          - !Ref AWS::AccountId
+          - ${self:custom.assetUpdatedTopic}
+
+resources:
+  Description: Static asset hosting
+
+  Outputs:
+    URL:
+      Description: URL for static assets
+      Value: !Join
+        - ""
+        - - "https://"
+          - !GetAtt CDN.DomainName
+
+  Resources:
+    StaticAssetBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.staticAssetBucket.name}
+        AccessControl: Private
+        NotificationConfiguration:
+          LambdaConfigurations:
+            - Event: s3:ObjectCreated:*
+              Function: !GetAtt BucketDasheventLambdaFunction.Arn
+
+    BucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref StaticAssetBucket
+        PolicyDocument:
+          Statement:
+            - Action: s3:GetObject
+              Effect: Allow
+              Principal:
+                CanonicalUser: !GetAtt StaticAssetAccessOriginIdentity.S3CanonicalUserId
+              Resource:
+                - ${self:custom.staticAssetBucket.files}
+
+    BucketEventLambdaPermission:
+      DependsOn:
+        - BucketDasheventLambdaFunction
+      Type: AWS::Lambda::Permission
+      Properties:
+        FunctionName: !GetAtt BucketDasheventLambdaFunction.Arn
+        Action: lambda:InvokeFunction
+        Principal: s3.amazonaws.com
+        SourceArn: ${self:custom.staticAssetBucket.arn}
+
+    CDN:
+      Type: AWS::CloudFront::Distribution
+      Properties:
+        DistributionConfig:
+          Comment: Static assets | ${self:provider.stage}
+          DefaultCacheBehavior:
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            ForwardedValues:
+              Cookies:
+                Forward: none
+              Headers: [Origin]
+              QueryString: false
+            TargetOriginId: assets
+            DefaultTTL: 2592000 # 1 month
+            MinTTL: 2592000 # 1 month
+            MaxTTL: 31536000 # 1 year
+            ViewerProtocolPolicy: redirect-to-https
+          DefaultRootObject: index.html
+          Enabled: true
+          Origins:
+            - Id: assets
+              DomainName: !GetAtt StaticAssetBucket.DomainName
+              OriginPath: ""
+              S3OriginConfig:
+                OriginAccessIdentity: !Join
+                  - ""
+                  - - origin-access-identity/cloudfront/
+                    - !Ref StaticAssetAccessOriginIdentity
+          PriceClass: PriceClass_100
+
+    StaticAssetAccessOriginIdentity:
+      Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+      Properties:
+        CloudFrontOriginAccessIdentityConfig:
+          Comment: Access static assets only through CloudFront
