@@ -41,9 +41,7 @@ jobs:
       - run:
           command: |
             STRING_BUCKET=$(jq .StaticAssetBucket < .serverless/stack-output/outputs.json)
-            echo $STRING_BUCKET
             BUCKET=$(sed -e 's/^"//' -e 's/"$//' \<<< $STRING_BUCKET)
-            echo $BUCKET
             aws s3 sync assets s3://$BUCKET/ --delete
 
 workflows:
