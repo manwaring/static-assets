@@ -22,7 +22,7 @@
     "cloc": "^2.8.0",
     "fork-ts-checker-webpack-plugin": "^6.2.10",
     "jest": "^27.0.1",
-    "serverless": "^2.43.1",
+    "serverless": "^3.25.1",
     "serverless-cloudformation-resource-counter": "^1.1.1",
     "serverless-plugin-iam-checker": "^1.0.8",
     "serverless-plugin-test-helper": "^2.6.4",
